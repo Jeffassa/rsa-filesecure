@@ -1,0 +1,17 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+# Clés et fichiers d'essai : jamais dans le dépôt
+*.rsakey
+*.rsaenc
+
+.vercel
+.env*
+
+# Fichiers temporaires de Word
+~$*
+
+# Anciennes versions du rapport, gardées en local
+docs/rapport/Rapport_RSA_FileSecure.*
+docs/rapport/Rapport_TP_RSA_FileSecure_*

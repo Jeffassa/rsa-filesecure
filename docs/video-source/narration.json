@@ -1,0 +1,147 @@
+[
+ {
+  "id": "title",
+  "rate": "1.0",
+  "say": "R S A File Secure. Comment un fichier chiffré circule entre deux binômes."
+ },
+ {
+  "id": "roles",
+  "rate": "1.0",
+  "say": "Awa envoie un fichier confidentiel. Koffi le reçoit."
+ },
+ {
+  "id": "canal",
+  "rate": "1.0",
+  "say": "Entre eux, un canal non sûr : un tiers peut tout intercepter. Le serveur du site, lui, ne reçoit rien."
+ },
+ {
+  "id": "keys1",
+  "rate": "1.0",
+  "say": "Koffi crée sa paire de clés. Le navigateur cherche deux grands nombres premiers, p et q."
+ },
+ {
+  "id": "keys2",
+  "rate": "1.0",
+  "say": "On en déduit le module n, l'exposant public e, et l'exposant privé d."
+ },
+ {
+  "id": "keys3",
+  "rate": "1.0",
+  "say": "La paire se sépare : une clé publique à partager, une clé privée à garder."
+ },
+ {
+  "id": "keys4",
+  "rate": "1.0",
+  "say": "La clé privée est enregistrée chiffrée par un mot de passe. Elle ne quitte jamais Koffi."
+ },
+ {
+  "id": "keys5",
+  "rate": "1.0",
+  "say": "Dans le site, ces valeurs s'affichent au moment même du calcul."
+ },
+ {
+  "id": "pub1",
+  "rate": "1.0",
+  "say": "Koffi envoie sa clé publique à Awa. Elle peut voyager sans protection : elle ne sert qu'à chiffrer."
+ },
+ {
+  "id": "pub2",
+  "rate": "1.0",
+  "say": "Pour éviter qu'un tiers ne la remplace, Awa et Koffi comparent son empreinte à voix haute."
+ },
+ {
+  "id": "pub3",
+  "rate": "1.0",
+  "say": "Les empreintes sont identiques : la clé est authentique."
+ },
+ {
+  "id": "enc1",
+  "rate": "1.0",
+  "say": "Awa chiffre le fichier. D'abord, une clé A E S de 256 bits est tirée au hasard, rien que pour ce fichier."
+ },
+ {
+  "id": "enc2",
+  "rate": "1.0",
+  "say": "Cette clé de session est scellée avec R S A, O A E P, et la clé publique de Koffi."
+ },
+ {
+  "id": "enc3",
+  "rate": "1.0",
+  "say": "A E S 256 G C M chiffre ensuite le contenu par morceaux, chacun avec une étiquette d'intégrité."
+ },
+ {
+  "id": "enc4",
+  "rate": "1.0",
+  "say": "L'en-tête, la clé scellée et le contenu chiffré forment le fichier point R S A E N C."
+ },
+ {
+  "id": "enc5",
+  "rate": "1.0",
+  "say": "Dans le site, ces quatre étapes s'affichent au rythme du vrai calcul."
+ },
+ {
+  "id": "tx1",
+  "rate": "1.0",
+  "say": "Awa envoie le fichier chiffré, par e-mail ou par clé U S B."
+ },
+ {
+  "id": "tx2",
+  "rate": "1.0",
+  "say": "Le tiers peut le copier : sans la clé privée de Koffi, il n'y voit qu'un bruit illisible."
+ },
+ {
+  "id": "tx3",
+  "rate": "1.0",
+  "say": "Et s'il modifie un seul octet, l'étiquette d'intégrité le trahira."
+ },
+ {
+  "id": "dec1",
+  "rate": "1.0",
+  "say": "Koffi ouvre le fichier. L'en-tête indique à quelle clé il est destiné : c'est bien la sienne."
+ },
+ {
+  "id": "dec2",
+  "rate": "1.0",
+  "say": "Déverrouillée par le mot de passe, la clé privée ouvre la clé de session."
+ },
+ {
+  "id": "dec3",
+  "rate": "1.0",
+  "say": "A E S G C M déchiffre chaque morceau, et vérifie son étiquette."
+ },
+ {
+  "id": "dec4",
+  "rate": "1.0",
+  "say": "Enfin, l'empreinte S H A 256 du fichier restauré est comparée à l'originale : elles sont identiques."
+ },
+ {
+  "id": "dec5",
+  "rate": "1.0",
+  "say": "Le fichier est restauré, octet pour octet."
+ },
+ {
+  "id": "bad1",
+  "rate": "1.0",
+  "say": "Si le fichier a été modifié en route, le déchiffrement est refusé : rien n'est restitué."
+ },
+ {
+  "id": "bad2",
+  "rate": "1.0",
+  "say": "Il en va de même avec la mauvaise clé, ou un fichier tronqué."
+ },
+ {
+  "id": "sum1",
+  "rate": "1.0",
+  "say": "En résumé : R S A protège une petite clé, A E S protège le fichier."
+ },
+ {
+  "id": "sum2",
+  "rate": "1.0",
+  "say": "Seuls la clé publique et le fichier chiffré voyagent. La clé privée, le mot de passe et la clé de session restent secrets."
+ },
+ {
+  "id": "end",
+  "rate": "1.0",
+  "say": "Tout se passe dans le navigateur : aucun fichier n'est envoyé au serveur."
+ }
+]

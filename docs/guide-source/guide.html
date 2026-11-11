@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>RSA FileSecure, guide d'utilisation</title>
+<link rel="stylesheet" href="style.css" />
+<style>@page { size: A4; margin: 17mm 16mm 18mm; }</style>
+</head>
+<body>
+
+<!-- ============================================================ SOMMAIRE -->
+<section class="chapter">
+  <div class="kicker">Guide d'utilisation</div>
+  <h1>Sommaire</h1>
+  <div class="rule"></div>
+  <ol class="toc">
+    <li>Présentation <span>ce que fait le site, les deux rôles</span></li>
+    <li>Installer et lancer le site <span>commandes, navigateurs, interface</span></li>
+    <li>Créer sa paire de clés <span>Koffi, le destinataire</span></li>
+    <li>Sauvegarder ses clés <span>clé publique et clé privée</span></li>
+    <li>Échanger et vérifier la clé publique <span>Awa, l'expéditrice</span></li>
+    <li>Chiffrer un fichier <span>Awa</span></li>
+    <li>Déchiffrer un fichier <span>Koffi</span></li>
+    <li>Quand quelque chose ne va pas <span>messages d'erreur et solutions</span></li>
+    <li>Comprendre RSA et page Tests <span>pour la soutenance</span></li>
+    <li>Scénario de démonstration <span>7 minutes à deux</span></li>
+    <li>Bonnes pratiques et limites</li>
+    <li>Questions fréquentes</li>
+    <li>Annexes <span>fichiers, format .rsaenc, glossaire</span></li>
+  </ol>
+
+  <div class="box info" style="margin-top:18pt">
+    <span class="t">Comment lire ce guide</span>
+    <p>Les exemples suivent deux personnes : <strong>Awa</strong>, qui envoie un fichier confidentiel, et <strong>Koffi</strong>, qui le reçoit. Remplacez ces prénoms par ceux de votre binôme. Toutes les captures viennent du site réel, pendant un vrai échange entre deux sessions de navigateur.</p>
+  </div>
+</section>
+
+<!-- ============================================================ 1 -->
+<section class="chapter">
+  <div class="kicker"><span class="num">1</span> Présentation</div>
+  <h1>Ce que fait RSA FileSecure</h1>
+  <p class="lead">Un site web qui permet à deux personnes d'échanger des fichiers confidentiels : même si quelqu'un intercepte le fichier en route, il ne peut ni le lire, ni le modifier sans que cela se voie.</p>
+
+  <h2>Le principe en une image</h2>
+  <p>Koffi fabrique un cadenas, sa <strong>clé publique</strong>, qu'il peut distribuer à tout le monde. Il garde pour lui la seule clé capable de l'ouvrir, sa <strong>clé privée</strong>. Awa ferme le fichier avec le cadenas de Koffi. Une fois fermé, même Awa ne peut plus l'ouvrir : seul Koffi le peut.</p>
+
+  <div class="cards">
+    <div class="card violet">
+      <h4><span class="avatar" style="background:#997def">A</span>Awa, l'expéditrice</h4>
+      <p>Récupère la clé publique de Koffi, vérifie son empreinte, chiffre le fichier et envoie le fichier <code>.rsaenc</code>.</p>
+    </div>
+    <div class="card green">
+      <h4><span class="avatar" style="background:#09a582">K</span>Koffi, le destinataire</h4>
+      <p>Crée sa paire de clés, partage sa clé publique, garde sa clé privée et déchiffre les fichiers reçus.</p>
+    </div>
+  </div>
+
+  <figure>
+    <img src="shots/02-schema.png" alt="Schéma animé de l'échange" />
+    <figcaption><b>Figure 1.</b> Le schéma « Comment ça marche » de la page d'accueil rejoue l'échange en cinq étapes.</figcaption>
+  </figure>
+
+  <h2>Ce qui se passe sous le capot</h2>
+  <p>RSA ne peut chiffrer que quelques centaines d'octets à la fois. Le site utilise donc le <strong>chiffrement hybride</strong>, comme les outils professionnels :</p>
+  <ul>
+    <li>une clé AES de 256 bits, tirée au hasard pour chaque fichier, chiffre le contenu (AES-256-GCM) ;</li>
+    <li>RSA-OAEP chiffre cette clé AES avec la clé publique de Koffi ;</li>
+    <li>seule la clé privée de Koffi peut rouvrir la clé AES, et donc le fichier.</li>
+  </ul>
+
+  <div class="box tip">
+    <span class="t">Rien ne quitte votre ordinateur</span>
+    <p>Tous les calculs sont faits par votre navigateur. Aucun fichier, aucune clé et aucun mot de passe n'est envoyé sur Internet, pas même au serveur qui héberge le site.</p>
+  </div>
+</section>
+
+<!-- ============================================================ 2 -->
+<section class="chapter">
+  <div class="kicker"><span class="num">2</span> Installer et lancer le site</div>
+  <h1>Démarrer en deux commandes</h1>
+  <p class="lead">Il faut Node.js 20 ou plus récent. Ouvrez un terminal dans le dossier du projet.</p>
+
+<pre><span class="c"># Installer les dépendances (une seule fois)</span>
+npm install
+
+<span class="c"># Lancer le site</span>
+npm run dev</pre>
+
+  <p>Le site s'ouvre à l'adresse <code>http://localhost:5173</code>. Pour l'héberger en ligne, <code>npm run build</code> produit un dossier <code>dist/</code> à déposer sur n'importe quel hébergement statique en HTTPS (GitHub Pages par exemple).</p>
+
+  <div class="box warn">
+    <span class="t">Contexte sécurisé obligatoire</span>
+    <p>L'API cryptographique du navigateur ne fonctionne qu'en HTTPS ou sur <code>localhost</code>. Ouvrir le fichier <code>index.html</code> directement ne suffit pas.</p>
+  </div>
+
+  <table>
+    <thead><tr><th>Navigateur</th><th>Version</th><th>Remarque</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Chrome, Edge</td><td>récente</td><td>Recommandés, testés.</td></tr>
+      <tr><td class="k">Firefox</td><td>récente</td><td>Compatible.</td></tr>
+      <tr><td class="k">Téléphone</td><td>Chrome, Safari</td><td>Interface adaptée, barre d'onglets en bas.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Découvrir l'interface</h2>
+  <figure>
+    <img src="shots/01-accueil.png" alt="Page d'accueil" />
+    <figcaption><b>Figure 2.</b> La page d'accueil.</figcaption>
+  </figure>
+  <div class="side" style="grid-template-columns: 1fr 150px; gap: 18px;">
+  <ul style="margin-top:0">
+    <li><strong>À gauche</strong>, la barre de navigation : Accueil, Chiffrer, Déchiffrer, Clés RSA, Comprendre RSA, Tests et À propos. En bas, la clé actuellement chargée.</li>
+    <li><strong>En haut à droite</strong>, l'interrupteur <em>Animations détaillées</em>. Activé, chaque étape reste visible environ une seconde : idéal pour une présentation. Désactivé, tout s'enchaîne rapidement.</li>
+    <li><strong>Le rond à côté</strong> affiche vos initiales quand une clé est chargée et mène à la page Clés RSA.</li>
+    <li><strong>Au centre</strong>, les deux grandes actions : <span class="pill v">Chiffrer</span> en violet et <span class="pill g">Déchiffrer</span> en vert, et l'accès à vos clés.</li>
+    <li><strong>Sur téléphone</strong>, la navigation passe dans une barre d'onglets en bas de l'écran.</li>
+  </ul>
+  <figure style="margin:0">
+    <img src="shots/22-telephone.png" alt="Site sur téléphone" />
+    <figcaption><b>Figure 3.</b> Sur téléphone.</figcaption>
+  </figure>
+  </div>
+</section>
+
+<!-- ============================================================ 3 -->
+<section class="chapter">
+  <div class="kicker"><span class="num">3</span> Koffi, le destinataire</div>
+  <h1>Créer sa paire de clés</h1>
+  <p class="lead">C'est la personne qui <strong>reçoit</strong> les fichiers qui crée la paire de clés. On ne le fait qu'une fois.</p>
+
+  <ol class="steps green">
+    <li>Ouvrez la page <strong>Clés RSA</strong>.</li>
+    <li>Dans la carte <em>Créer ma paire de clés</em>, saisissez votre prénom. Il apparaîtra sur votre clé publique.</li>
+    <li>Choisissez la taille : <strong>3072 bits</strong> est recommandé. 2048 bits est le minimum accepté, 4096 bits est plus robuste mais plus lent à générer.</li>
+    <li>Cliquez sur <strong>Générer ma paire de clés</strong>.</li>
+  </ol>
+
+  <div class="side">
+    <figure>
+      <img src="shots/03-cles-vide.png" alt="Page Clés RSA vide" />
+      <figcaption><b>Figure 4.</b> Créer une clé, ou recharger une clé existante.</figcaption>
+    </figure>
+    <figure>
+      <img src="shots/04-cles-generation.png" alt="Génération en cours" />
+      <figcaption><b>Figure 5.</b> Pendant le calcul, le navigateur cherche deux grands nombres premiers.</figcaption>
+    </figure>
+  </div>
+
+  <div class="side" style="grid-template-columns: 1fr 1.25fr;">
+    <p style="margin:0">Quelques secondes plus tard, le site montre ce qui vient d'être calculé : les nombres premiers <em>p</em> et <em>q</em>, le module <em>n = p × q</em>, l'exposant public <em>e = 65537</em> et l'exposant privé <em>d</em>. Les valeurs secrètes sont volontairement masquées. La paire se sépare ensuite en clé publique et clé privée.</p>
+    <figure style="margin:0">
+      <img src="shots/05-cles-calcul.png" alt="Valeurs calculées" />
+      <figcaption><b>Figure 6.</b> Les vraies valeurs de la clé, secrets masqués.</figcaption>
+    </figure>
+  </div>
+
+  <div class="side" style="grid-template-columns: 1.5fr 1fr; margin-top:10pt">
+    <figure style="margin:0">
+      <img src="shots/06-cles-identite.png" alt="Carte d'identité de la clé" />
+      <figcaption><b>Figure 7.</b> La carte de la clé, avec son empreinte à lire à voix haute.</figcaption>
+    </figure>
+    <div class="box info" style="margin-top:0">
+      <span class="t">L'empreinte, votre signature visuelle</span>
+      <p>L'empreinte est un résumé SHA-256 de votre clé publique, en 8 groupes de 4 caractères. Elle sert à vérifier que votre binôme a bien reçu <strong>votre</strong> clé, et non une clé substituée en route.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 4 -->
+<section class="chapter">
+  <div class="kicker"><span class="num">4</span> Koffi, le destinataire</div>
+  <h1>Sauvegarder ses clés</h1>
+  <p class="lead">Les deux clés se sauvegardent séparément, et ne suivent pas du tout le même chemin.</p>
+
+  <h2>La clé publique : à partager</h2>
+  <div class="side">
+    <figure style="margin:0">
+      <img src="shots/07-cles-publique.png" alt="Clé publique" />
+      <figcaption><b>Figure 8.</b> La clé publique, au format PEM.</figcaption>
+    </figure>
+    <ol class="steps" style="margin-top:0">
+      <li>Cliquez sur <strong>Télécharger (.pem)</strong>. Vous obtenez <code>cle_publique_koffi.pem</code>.</li>
+      <li>Envoyez ce fichier à Awa par le moyen de votre choix : e-mail, messagerie, clé USB.</li>
+      <li>Vous pouvez aussi cliquer sur <strong>Copier le texte</strong> et le coller dans un message.</li>
+    </ol>
+  </div>
+
+  <h2>La clé privée : à garder</h2>
+  <div class="side">
+    <figure>
+      <img src="shots/08-cles-privee.png" alt="Clé privée protégée" />
+      <figcaption><b>Figure 9.</b> La jauge indique la robustesse du mot de passe.</figcaption>
+    </figure>
+    <div>
+      <ol class="steps violet">
+        <li>Choisissez un mot de passe d'au moins 8 caractères. Visez « Bon » ou « Excellent » sur la jauge : mélangez longueur, majuscules, chiffres et symboles.</li>
+        <li>Confirmez-le dans le second champ.</li>
+        <li>Cliquez sur <strong>Télécharger la clé privée protégée</strong>. Vous obtenez <code>cle_privee_koffi.rsakey</code>.</li>
+        <li>Rangez ce fichier en lieu sûr, et retenez le mot de passe.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="box danger" style="margin:0">
+      <span class="t">Ne jamais envoyer sa clé privée</span>
+      <p>Ni à Awa, ni à l'enseignant, ni à personne. Le fichier est chiffré par votre mot de passe (PBKDF2, 600 000 itérations, puis AES-256-GCM), mais la règle reste la même : la clé privée ne quitte jamais son propriétaire.</p>
+    </div>
+    <div class="box warn" style="margin:0">
+      <span class="t">La clé disparaît quand on ferme l'onglet</span>
+      <p>C'est voulu : la clé privée n'est jamais enregistrée dans le navigateur. Rechargez votre <code>.rsakey</code> à la visite suivante (chapitre 7). Sans ce fichier ou son mot de passe, les fichiers chiffrés pour vous sont perdus.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 5 -->
+<section class="chapter">
+  <div class="kicker"><span class="num">5</span> Awa, l'expéditrice</div>
+  <h1>Échanger et vérifier la clé publique</h1>
+  <p class="lead">Avant de chiffrer quoi que ce soit, Awa doit avoir la clé publique de Koffi, et s'assurer que c'est bien la sienne.</p>
+
+  <h2>Ajouter la clé de son binôme</h2>
+  <ol class="steps violet">
+    <li>Ouvrez <strong>Clés RSA</strong> et descendez jusqu'à <em>Clés publiques de vos binômes</em>.</li>
+    <li>Cliquez dans le champ <em>Sélectionner la clé publique (.pem)</em> et choisissez le fichier reçu. Vous pouvez aussi le glisser dans le champ, ou coller le texte de la clé.</li>
+    <li>La clé apparaît dans la liste, avec son nom, sa taille et son empreinte. Le navigateur la mémorise pour les prochaines fois.</li>
+  </ol>
+  <figure class="mid">
+    <img src="shots/09-binome-ajoute.png" alt="Clé du binôme ajoutée" />
+    <figcaption><b>Figure 10.</b> La clé de Koffi, pas encore vérifiée.</figcaption>
+  </figure>
+
+  <h2>Vérifier l'empreinte</h2>
+  <p>Une personne malveillante pourrait intercepter la clé publique et la remplacer par la sienne : elle pourrait alors lire tout ce qu'Awa chiffre. La parade est simple :</p>
+  <ol class="steps violet">
+    <li>Koffi lit à voix haute l'empreinte affichée sur sa carte de clé (figure 7), en personne ou au téléphone.</li>
+    <li>Awa compare avec l'empreinte affichée chez elle, groupe par groupe.</li>
+    <li>Si tout est identique, Awa clique sur <strong>Marquer comme vérifiée</strong>, ou coche la case de l'écran Chiffrer.</li>
+  </ol>
+  <div class="side" style="grid-template-columns: 1.3fr 1fr;">
+    <figure>
+      <img src="shots/11-chiffrer-empreinte.png" alt="Vérification de l'empreinte" />
+      <figcaption><b>Figure 11.</b> La case de vérification, obligatoire avant de chiffrer.</figcaption>
+    </figure>
+    <div class="box danger" style="margin-top:0">
+      <span class="t">Empreinte différente ?</span>
+      <p>N'utilisez pas cette clé. Demandez à Koffi de vous la renvoyer, et supprimez l'ancienne avec l'icône de corbeille.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 6 -->
+<section class="chapter">
+  <div class="kicker"><span class="num">6</span> Awa, l'expéditrice</div>
+  <h1>Chiffrer un fichier</h1>
+  <p class="lead">Tout type de fichier est accepté : PDF, image, document Word, archive, texte. La limite est de 100 Mo.</p>
+
+  <ol class="steps violet">
+    <li>Ouvrez <strong>Chiffrer</strong>.</li>
+    <li><strong>Sélectionner le fichier</strong> : glissez le fichier dans la zone, ou cliquez sur <em>Choisir un fichier</em>. Son nom et sa taille s'affichent, et la grille de droite montre ses premiers octets en clair.</li>
+    <li><strong>Clé publique du destinataire</strong> : choisissez la carte de Koffi. Vérifiez que l'empreinte est cochée comme identique.</li>
+    <li>Cliquez sur <strong>Chiffrer pour Koffi</strong>.</li>
+  </ol>
+
+  <figure>
+    <img src="shots/10-chiffrer-pret.png" alt="Écran Chiffrer prêt" />
+    <figcaption><b>Figure 12.</b> Le fichier et la clé sont choisis : il ne reste qu'à vérifier l'empreinte et chiffrer.</figcaption>
+  </figure>
+
+  <h2>Suivre le chiffrement</h2>
+  <p>Le panneau <em>Ce qui se passe</em> montre les vraies étapes du calcul, dans leur ordre réel. La grille représente les 384 premiers octets du fichier : un front violet la balaie, et la structure du texte disparaît au profit d'un bruit uniforme.</p>
+  <figure>
+    <img src="shots/12-chiffrer-en-cours.png" alt="Chiffrement en cours" />
+    <figcaption><b>Figure 13.</b> Chiffrement en cours : les deux premières étapes sont faites, le contenu est en train d'être chiffré.</figcaption>
+  </figure>
+
+  <table>
+    <thead><tr><th>Étape</th><th>Ce que fait le navigateur</th></tr></thead>
+    <tbody>
+      <tr><td class="k">1. Clé de session</td><td>Tire au hasard une clé AES de 256 bits, neuve pour ce fichier. Elle n'est jamais affichée.</td></tr>
+      <tr><td class="k">2. Scellement</td><td>Chiffre cette clé avec RSA-OAEP et la clé publique de Koffi.</td></tr>
+      <tr><td class="k">3. Contenu</td><td>Chiffre le nom et le contenu du fichier avec AES-256-GCM, par morceaux d'1 Mo, chacun avec une étiquette d'intégrité.</td></tr>
+      <tr><td class="k">4. Assemblage</td><td>Réunit l'en-tête, la clé scellée et le contenu chiffré dans le fichier <code>.rsaenc</code>.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="chapter">
+  <h2 style="margin-top:0">Récupérer et envoyer le fichier chiffré</h2>
+  <div class="side">
+    <figure>
+      <img src="shots/13-chiffrer-termine.png" alt="Chiffrement terminé" />
+      <figcaption><b>Figure 14.</b> Le fichier chiffré est prêt.</figcaption>
+    </figure>
+    <div>
+      <ol class="steps violet">
+        <li>La carte du résultat donne le nom du fichier, par exemple <code>rapport_tp.txt.rsaenc</code>, sa taille et la durée du chiffrement.</li>
+        <li>Les premiers octets commencent toujours par <code>52 53 41 45 4E 43</code>, c'est-à-dire « RSAENC » : la signature du format.</li>
+        <li>La barre colorée montre la composition du fichier : en-tête, clé scellée et contenu chiffré.</li>
+        <li>Cliquez sur <strong>Télécharger</strong>, puis envoyez le fichier à Koffi par e-mail, messagerie ou clé USB.</li>
+      </ol>
+      <div class="box tip">
+        <span class="t">Le canal peut être public</span>
+        <p>Le fichier <code>.rsaenc</code> peut transiter par n'importe quel moyen, même non sécurisé : sans la clé privée de Koffi, il est illisible.</p>
+      </div>
+      <div class="box info">
+        <span class="t">Bon à savoir</span>
+        <p>Chiffrer deux fois le même fichier donne deux résultats différents, car la clé de session et le vecteur d'initialisation sont tirés au hasard à chaque fois.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 7 -->
+<section class="chapter">
+  <div class="kicker"><span class="num">7</span> Koffi, le destinataire</div>
+  <h1>Déchiffrer un fichier</h1>
+  <p class="lead">Koffi a reçu <code>rapport_tp.txt.rsaenc</code>. Il lui faut ce fichier, sa clé privée et son mot de passe.</p>
+
+  <h2>Charger sa clé privée</h2>
+  <p>Si la clé a été créée pendant la même session, elle est déjà prête. Sinon, par exemple après avoir fermé l'onglet :</p>
+  <div class="side">
+    <figure>
+      <img src="shots/18-cle-recharger.png" alt="Recharger sa clé privée" />
+      <figcaption><b>Figure 15.</b> Recharger sa clé : le site montre à qui elle appartient avant même le mot de passe.</figcaption>
+    </figure>
+    <ol class="steps green">
+      <li>Dans l'étape <strong>Clé privée</strong>, choisissez votre fichier <code>.rsakey</code>.</li>
+      <li>Le site affiche le nom et l'empreinte de la clé, sans encore la déchiffrer.</li>
+      <li>Saisissez votre mot de passe et cliquez sur <strong>Déverrouiller la clé</strong>.</li>
+    </ol>
+  </div>
+
+  <h2>Déposer le fichier et déchiffrer</h2>
+  <ol class="steps green">
+    <li>Ouvrez <strong>Déchiffrer</strong> et déposez le fichier <code>.rsaenc</code> dans la zone de l'étape 1.</li>
+    <li>Le site lit l'en-tête et indique à quelle clé le fichier est destiné. Si c'est la vôtre, l'empreinte passe au vert avec la mention <em>C'est bien votre clé</em>.</li>
+    <li>Cliquez sur <strong>Déchiffrer le fichier</strong>.</li>
+  </ol>
+  <figure>
+    <img src="shots/14-dechiffrer-pret.png" alt="Écran Déchiffrer prêt" />
+    <figcaption><b>Figure 16.</b> Le fichier est bien destiné à la clé chargée.</figcaption>
+  </figure>
+</section>
+
+<section class="chapter">
+  <h2 style="margin-top:0">Suivre le déchiffrement</h2>
+  <p>Le chemin inverse s'affiche, en vert : la grille passe du bruit violet à la structure du fichier d'origine.</p>
+  <figure>
+    <img src="shots/15-dechiffrer-en-cours.png" alt="Déchiffrement en cours" />
+    <figcaption><b>Figure 17.</b> La clé de session vient d'être ouverte par la clé privée, le contenu se déchiffre.</figcaption>
+  </figure>
+  <table>
+    <thead><tr><th>Étape</th><th>Ce que fait le navigateur</th></tr></thead>
+    <tbody>
+      <tr><td class="k">1. En-tête</td><td>Vérifie le format et compare l'empreinte du destinataire à votre clé.</td></tr>
+      <tr><td class="k">2. Clé de session</td><td>Votre clé privée déchiffre la clé AES scellée par RSA-OAEP.</td></tr>
+      <tr><td class="k">3. Contenu</td><td>AES-GCM déchiffre chaque morceau et contrôle son étiquette : un seul octet modifié et tout est refusé.</td></tr>
+      <tr><td class="k">4. Intégrité</td><td>Compare le SHA-256 du fichier restauré à celui d'origine, enregistré lors du chiffrement.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="chapter">
+  <h2 style="margin-top:0">Récupérer le fichier original</h2>
+  <div class="side">
+    <figure>
+      <img src="shots/16-dechiffrer-termine.png" alt="Déchiffrement terminé" />
+      <figcaption><b>Figure 18.</b> Les deux SHA-256 sont identiques : le fichier est intact.</figcaption>
+    </figure>
+    <div>
+      <ol class="steps green">
+        <li>La carte verte indique <em>Identique à l'original</em>, avec la taille et la durée.</li>
+        <li>Les empreintes SHA-256 de l'original et du fichier obtenu s'affichent l'une sous l'autre.</li>
+        <li>Les textes et les images s'affichent en aperçu.</li>
+        <li>Cliquez sur <strong>Télécharger</strong> : le fichier retrouve son nom d'origine.</li>
+      </ol>
+      <div class="box tip">
+        <span class="t">Le nom aussi était chiffré</span>
+        <p>Le nom du fichier voyage à l'intérieur de la partie chiffrée : quelqu'un qui intercepte le <code>.rsaenc</code> ne le voit pas.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 8 -->
+<section class="chapter">
+  <div class="kicker"><span class="num">8</span> Dépannage</div>
+  <h1>Quand quelque chose ne va pas</h1>
+  <p class="lead">Le site refuse toujours plutôt que de rendre un fichier faux. Chaque refus est expliqué en clair.</p>
+  <div class="side">
+    <figure>
+      <img src="shots/17-dechiffrer-refus.png" alt="Déchiffrement refusé" />
+      <figcaption><b>Figure 19.</b> Un seul octet du fichier a été modifié : l'étape 3 échoue et rien n'est restitué.</figcaption>
+    </figure>
+    <div>
+      <p>Sur cette capture, un octet du fichier <code>.rsaenc</code> a été modifié après le chiffrement. La clé de session s'ouvre normalement, mais l'étiquette d'intégrité AES-GCM ne correspond plus : l'étape passe en rouge et le déchiffrement est refusé.</p>
+      <div class="box info">
+        <span class="t">À montrer pendant la soutenance</span>
+        <p>Ce refus prouve que le chiffrement protège aussi l'intégrité, pas seulement la confidentialité.</p>
+      </div>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th style="width:38%">Message affiché</th><th style="width:28%">Cause</th><th>Que faire</th></tr></thead>
+    <tbody>
+      <tr><td>Ce fichier ne contient pas de clé au format PEM.</td><td>Mauvais fichier choisi comme clé publique.</td><td>Choisissez le fichier <code>.pem</code> envoyé par votre binôme.</td></tr>
+      <tr><td>Ce fichier est une clé privée. Elle ne doit jamais être partagée.</td><td>Votre binôme vous a envoyé sa clé privée.</td><td>Supprimez-la et demandez la clé publique. Votre binôme doit créer une nouvelle paire.</td></tr>
+      <tr><td>Cette clé ne fait que 1024 bits.</td><td>Clé trop faible.</td><td>Demandez une clé de 2048 bits au moins.</td></tr>
+      <tr><td>Comparez d'abord l'empreinte, puis cochez la case.</td><td>Empreinte non vérifiée.</td><td>Comparez-la de vive voix avec votre binôme (chapitre 5).</td></tr>
+      <tr><td>Fichier trop volumineux : la limite est de 100 Mo.</td><td>Fichier trop gros.</td><td>Compressez-le ou découpez-le.</td></tr>
+      <tr><td>Mot de passe incorrect, ou fichier de clé endommagé.</td><td>Faute de frappe, ou mauvais fichier <code>.rsakey</code>.</td><td>Vérifiez les majuscules et réessayez.</td></tr>
+      <tr><td>Ce fichier n'est pas un fichier chiffré RSA FileSecure (.rsaenc).</td><td>Fichier original ou autre format.</td><td>Déposez le fichier <code>.rsaenc</code> reçu.</td></tr>
+      <tr><td>Ce fichier n'a pas été chiffré pour votre clé.</td><td>Fichier destiné à quelqu'un d'autre, ou chiffré avec une ancienne clé.</td><td>Demandez à l'expéditeur de chiffrer avec votre clé publique actuelle.</td></tr>
+      <tr><td>Le fichier a été modifié : l'étiquette d'intégrité AES-GCM ne correspond pas.</td><td>Fichier altéré ou abîmé pendant le transfert.</td><td>Demandez un nouvel envoi.</td></tr>
+      <tr><td>Le fichier chiffré est incomplet ou a été modifié.</td><td>Téléchargement interrompu ou fichier tronqué.</td><td>Demandez un nouvel envoi.</td></tr>
+      <tr><td><em>Aucune clé chargée</em> après un rechargement de la page</td><td>Comportement normal : la clé privée n'est jamais enregistrée.</td><td>Rechargez votre <code>.rsakey</code> avec son mot de passe.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============================================================ 9 -->
+<section class="chapter">
+  <div class="kicker"><span class="num">9</span> Pour la soutenance</div>
+  <h1>Comprendre RSA et page Tests</h1>
+  <p class="lead">Deux pages servent à expliquer et à prouver, devant l'enseignant, que le système fonctionne.</p>
+
+  <h2>Comprendre RSA</h2>
+  <ul>
+    <li><strong>RSA pas à pas</strong> : choisissez p et q, le site calcule n, φ(n), e et d. Tapez un mot : chaque lettre est chiffrée puis retrouvée, et le cadran montre chaque étape du calcul « puissance modulo n ».</li>
+    <li><strong>Pourquoi RSA ne chiffre pas tout le fichier</strong> : la taille maximale d'un message RSA-OAEP (190 à 446 octets) et le schéma du chiffrement hybride.</li>
+    <li><strong>Attaque d'une clé trop petite</strong> : le site casse une clé de 32 à 64 bits en factorisant n, puis lit le message sans la clé privée.</li>
+    <li><strong>Les paramètres retenus</strong> : chaque choix cryptographique et sa justification.</li>
+  </ul>
+  <figure class="mid">
+    <img src="shots/19-comprendre-rsa.png" alt="RSA pas à pas" />
+    <figcaption><b>Figure 20.</b> RSA pas à pas avec p = 61 et q = 53, et le cadran « modulo n ».</figcaption>
+  </figure>
+</section>
+
+<section class="chapter">
+  <figure>
+    <img src="shots/20-attaque.png" alt="Attaque d'une petite clé" />
+    <figcaption><b>Figure 21.</b> Une clé de 64 bits cassée en une fraction de seconde : la taille de clé compte.</figcaption>
+  </figure>
+
+  <h2>La page Tests</h2>
+  <p>Cliquez sur <strong>Tout lancer</strong> : 19 vérifications s'exécutent sous vos yeux. Elles couvrent la génération des clés, les clés privées protégées, les fichiers vides ou en plusieurs morceaux, la modification d'un octet, la mauvaise clé, le fichier tronqué ou réordonné et le RSA « à la main ». Le même jeu de tests tourne aussi en ligne de commande avec <code>npm test</code>, avec trois tests de compatibilité avec OpenSSL en plus.</p>
+  <figure>
+    <img src="shots/21-tests.png" alt="Page Tests" />
+    <figcaption><b>Figure 22.</b> Tous les tests au vert.</figcaption>
+  </figure>
+</section>
+
+<!-- ============================================================ 10 -->
+<section class="chapter">
+  <div class="kicker"><span class="num">10</span> Démonstration</div>
+  <h1>Scénario de démonstration en 7 minutes</h1>
+  <p class="lead">À répéter avant la soutenance, sur deux ordinateurs. Activez <em>Animations détaillées</em>.</p>
+
+  <table>
+    <thead><tr><th style="width:12%">Temps</th><th style="width:14%">Qui</th><th>Action</th><th style="width:30%">Ce qu'on montre</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">0:00</td><td><span class="pill n">Les deux</span></td><td>Page d'accueil et schéma « Comment ça marche ».</td><td>Les rôles et le principe du cadenas.</td></tr>
+      <tr><td class="mono">0:45</td><td><span class="pill g">Koffi</span></td><td>Génère sa paire de clés en 3072 bits.</td><td>p, q, n, e, d calculés ; la paire se sépare.</td></tr>
+      <tr><td class="mono">1:30</td><td><span class="pill g">Koffi</span></td><td>Télécharge la clé publique et l'envoie ; enregistre la clé privée protégée.</td><td>Seule la clé publique voyage.</td></tr>
+      <tr><td class="mono">2:00</td><td><span class="pill n">Les deux</span></td><td>Lecture de l'empreinte à voix haute, Awa coche la vérification.</td><td>La parade à la substitution de clé.</td></tr>
+      <tr><td class="mono">2:30</td><td><span class="pill v">Awa</span></td><td>Chiffre un PDF ou un texte pour Koffi.</td><td>Les 4 étapes et la grille qui devient du bruit.</td></tr>
+      <tr><td class="mono">3:30</td><td><span class="pill v">Awa</span></td><td>Ouvre le <code>.rsaenc</code> dans le Bloc-notes, puis l'envoie.</td><td>Le contenu est illisible.</td></tr>
+      <tr><td class="mono">4:00</td><td><span class="pill g">Koffi</span></td><td>Déchiffre le fichier.</td><td>Les SHA-256 identiques, le fichier s'ouvre.</td></tr>
+      <tr><td class="mono">5:00</td><td><span class="pill r">Koffi</span></td><td>Tente de déchiffrer un fichier modifié d'un octet.</td><td>Le refus : l'intégrité est protégée.</td></tr>
+      <tr><td class="mono">5:45</td><td><span class="pill n">Les deux</span></td><td>Comprendre RSA : attaque d'une clé de 64 bits.</td><td>Pourquoi 3072 bits.</td></tr>
+      <tr><td class="mono">6:30</td><td><span class="pill n">Les deux</span></td><td>Page Tests, <strong>Tout lancer</strong>.</td><td>19 tests au vert.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="box tip">
+    <span class="t">Astuce pour modifier un octet</span>
+    <p>Ouvrez une copie du <code>.rsaenc</code> dans un éditeur hexadécimal (HxD sous Windows), changez un seul caractère vers la fin du fichier, enregistrez, puis déposez cette copie dans Déchiffrer.</p>
+  </div>
+  <div class="box info">
+    <span class="t">S'entraîner seul</span>
+    <p>Dans Clés RSA, le lien <em>M'ajouter comme destinataire</em> permet de chiffrer pour soi-même, puis le bouton <em>Le déchiffrer</em> ouvre directement le résultat dans l'écran Déchiffrer.</p>
+  </div>
+
+  <h2>La phrase à retenir</h2>
+  <div class="box info" style="font-size:11pt">
+    <p>« On chiffre avec la clé publique du destinataire, il déchiffre avec sa clé privée. Comme RSA ne chiffre que de petites données, il protège une clé AES, et c'est AES qui chiffre le fichier. »</p>
+  </div>
+</section>
+
+<!-- ============================================================ 11 -->
+<section class="chapter">
+  <div class="kicker"><span class="num">11</span> Sécurité</div>
+  <h1>Bonnes pratiques et limites</h1>
+
+  <h2>Les bons réflexes</h2>
+  <div class="cards">
+    <div class="card green"><h4>À faire</h4>
+      <p>Vérifier l'empreinte de chaque nouvelle clé publique par un autre canal.<br />Choisir un mot de passe long pour la clé privée.<br />Garder une copie du <code>.rsakey</code> sur un support sûr.<br />Utiliser 3072 bits.</p>
+    </div>
+    <div class="card" style="background:var(--danger-soft);border-color:#f0c9c9"><h4 style="color:var(--danger-deep)">À ne jamais faire</h4>
+      <p>Envoyer sa clé privée ou son mot de passe.<br />Utiliser une clé dont l'empreinte ne correspond pas.<br />Envoyer le fichier original en même temps que le <code>.rsaenc</code>.<br />Noter le mot de passe à côté du fichier de clé.</p>
+    </div>
+  </div>
+
+  <h2>Ce qui protège quoi</h2>
+  <table>
+    <thead><tr><th>Menace</th><th>Protection</th></tr></thead>
+    <tbody>
+      <tr><td>Lecture du fichier intercepté</td><td>AES-256-GCM, clé AES scellée par RSA-OAEP</td></tr>
+      <tr><td>Modification, troncature ou réordonnancement</td><td>Étiquette GCM sur chaque morceau, en-tête authentifié, SHA-256 final</td></tr>
+      <tr><td>Clé publique remplacée par un tiers</td><td>Vérification de l'empreinte à voix haute</td></tr>
+      <tr><td>Vol du fichier de clé privée</td><td>Chiffrement par mot de passe : PBKDF2 SHA-256, 600 000 itérations</td></tr>
+      <tr><td>Factorisation de la clé RSA</td><td>3072 bits par défaut, 2048 au minimum</td></tr>
+      <tr><td>Fuite du nom du fichier</td><td>Le nom est chiffré avec le contenu</td></tr>
+      <tr><td>Envoi de données à un serveur</td><td>Aucune requête réseau, politique de sécurité stricte</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Limites connues</h2>
+  <ul>
+    <li><strong>L'identité de l'expéditeur n'est pas prouvée</strong> : toute personne qui a la clé publique de Koffi peut lui envoyer un fichier chiffré. Une signature RSA-PSS ajouterait cette garantie.</li>
+    <li><strong>Une clé privée perdue est définitive</strong> : les fichiers chiffrés pour elle ne peuvent plus être ouverts.</li>
+    <li><strong>La taille du fichier chiffré</strong> laisse deviner celle de l'original.</li>
+    <li><strong>Les fichiers sont traités en mémoire</strong> : la limite est de 100 Mo.</li>
+  </ul>
+</section>
+
+<!-- ============================================================ 12 -->
+<section class="chapter">
+  <div class="kicker"><span class="num">12</span> FAQ</div>
+  <h1>Questions fréquentes</h1>
+
+  <h3>Awa et Koffi utilisent-ils la même clé ?</h3>
+  <p>Non. Ils utilisent les deux moitiés d'une même paire : la clé publique de Koffi pour chiffrer, sa clé privée pour déchiffrer. Pour que Koffi réponde à Awa, Awa crée sa propre paire et envoie sa clé publique à Koffi.</p>
+
+  <h3>Awa peut-elle relire le fichier qu'elle vient de chiffrer ?</h3>
+  <p>Non. Seule la clé privée de Koffi peut l'ouvrir. Awa garde évidemment son fichier original.</p>
+
+  <h3>Que se passe-t-il si je perds ma clé privée ou mon mot de passe ?</h3>
+  <p>Les fichiers chiffrés pour cette clé deviennent irrécupérables. Créez une nouvelle paire et envoyez votre nouvelle clé publique.</p>
+
+  <h3>Pourquoi ma clé disparaît-elle quand je recharge la page ?</h3>
+  <p>Par sécurité, la clé privée n'est jamais enregistrée dans le navigateur. Rechargez votre fichier <code>.rsakey</code>. Les clés publiques de vos binômes, elles, sont mémorisées.</p>
+
+  <h3>Le site envoie-t-il mes fichiers quelque part ?</h3>
+  <p>Non. Tout est calculé dans votre navigateur. Vous pouvez le vérifier dans l'onglet Réseau des outils de développement (touche F12) : aucune requête ne part pendant le chiffrement.</p>
+
+  <h3>Pourquoi deux chiffrements du même fichier donnent-ils des résultats différents ?</h3>
+  <p>La clé de session AES et le vecteur d'initialisation sont tirés au hasard à chaque fois. C'est une protection : on ne peut pas savoir si deux fichiers chiffrés contiennent la même chose.</p>
+
+  <h3>Puis-je utiliser une clé créée avec OpenSSL ?</h3>
+  <p>Oui pour la clé publique : le site lit le format PEM SPKI standard. Les tests automatiques le vérifient avec OpenSSL.</p>
+
+  <h3>À quoi sert l'interrupteur « Animations détaillées » ?</h3>
+  <p>Il ralentit l'affichage pour qu'on puisse suivre et commenter chaque étape. Le calcul, lui, n'est jamais ralenti : l'affichage ne montre une étape terminée que si elle l'est réellement.</p>
+</section>
+
+<!-- ============================================================ 13 -->
+<section class="chapter">
+  <div class="kicker"><span class="num">13</span> Annexes</div>
+  <h1>Annexes</h1>
+
+  <h2>A. Les fichiers manipulés</h2>
+  <table>
+    <thead><tr><th>Fichier</th><th>Créé par</th><th>Envoyé à</th><th>Contenu</th></tr></thead>
+    <tbody>
+      <tr><td class="k mono">cle_publique_koffi.pem</td><td>Koffi</td><td>Awa, ou n'importe qui</td><td>Clé publique RSA, format PEM SPKI. Non secret.</td></tr>
+      <tr><td class="k mono">cle_privee_koffi.rsakey</td><td>Koffi</td><td><span class="pill r">Personne</span></td><td>Clé privée PKCS#8 chiffrée par mot de passe.</td></tr>
+      <tr><td class="k mono">rapport.pdf.rsaenc</td><td>Awa</td><td>Koffi</td><td>Fichier chiffré, illisible sans la clé privée.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>B. Format du fichier .rsaenc</h2>
+<pre>octets 0 à 5    "RSAENC"              préfixe magique
+octet  6        0x01                  version du format
+octets 7 à 10   L                     longueur de l'en-tête
+L octets        en-tête JSON          algorithmes, empreinte du destinataire,
+                                      clé AES scellée, préfixe d'IV, morceaux
+reste           morceaux AES-GCM      chacun suivi de son étiquette de 16 octets</pre>
+
+  <h2>C. Glossaire</h2>
+  <table class="compact">
+    <tbody>
+      <tr><td class="k">Chiffrement asymétrique</td><td>Système à deux clés : l'une chiffre, l'autre déchiffre. RSA en est l'exemple le plus connu.</td></tr>
+      <tr><td class="k">Clé publique</td><td>Moitié partageable de la paire, qui sert à chiffrer pour son propriétaire.</td></tr>
+      <tr><td class="k">Clé privée</td><td>Moitié secrète, la seule capable de déchiffrer.</td></tr>
+      <tr><td class="k">RSA-OAEP</td><td>RSA avec un remplissage aléatoire qui rend chaque chiffrement unique et résiste aux attaques par oracle.</td></tr>
+      <tr><td class="k">AES-256-GCM</td><td>Chiffrement symétrique rapide, qui ajoute une étiquette d'intégrité à chaque bloc chiffré.</td></tr>
+      <tr><td class="k">Clé de session</td><td>Clé AES tirée au hasard pour un seul fichier, puis scellée par RSA.</td></tr>
+      <tr><td class="k">Chiffrement hybride</td><td>Association d'AES pour le contenu et de RSA pour protéger la clé AES.</td></tr>
+      <tr><td class="k">Empreinte</td><td>Résumé SHA-256 d'une clé publique, court et facile à comparer à voix haute.</td></tr>
+      <tr><td class="k">SHA-256</td><td>Fonction de hachage : un même fichier donne toujours la même empreinte, le moindre changement la modifie entièrement.</td></tr>
+      <tr><td class="k">PBKDF2</td><td>Fonction qui transforme un mot de passe en clé de chiffrement, volontairement lente pour freiner les essais.</td></tr>
+      <tr><td class="k">PEM, SPKI, PKCS#8</td><td>Formats standards d'échange de clés, lisibles par OpenSSL.</td></tr>
+    </tbody>
+  </table>
+
+</section>
+
+</body>
+</html>

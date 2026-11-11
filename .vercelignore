@@ -1,0 +1,9 @@
+# Seules les sources partent chez Vercel, qui compile le site lui-même.
+node_modules/
+dist/
+docs/
+*.log
+*.rsakey
+*.rsaenc
+.env*
+.vercel/
